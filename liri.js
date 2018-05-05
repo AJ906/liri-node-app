@@ -10,62 +10,136 @@ var keys = require("./keys.js");
 
 var fs = require("fs");
 
+
 var spotify = new Spotify(keys.spotify);
-
-var client = new Twitter(keys.twitter);
-
-
 // 10. Make it so liri.js can take in one of the following commands:
 
-//     * `my-tweets`
-// 1. `node liri.js my-tweets`
+//My-tweets
 
-//    * This will show your last 20 tweets and when they were created at in your terminal/bash window.
+var getTweets = function() {
+  var client = new Twitter(keys.twitter);
 
-
-//     * `spotify-this-song`
-// 2. `node liri.js spotify-this-song '<song name here>'`
-
-//    * This will show the following information about the song in your terminal/bash window
-     
-//      * Artist(s)
-     
-//      * The song's name
-     
-//      * A preview link of the song from Spotify
-     
-//      * The album that the song is from
-
-//    * If no song is provided then your program will default to "The Sign" by Ace of Base.
+  var params = {
+    screen_name: "aj_gtcbc"
+  };
+  client.get("statuses/user_timeline", params, function(error, tweets, callback) {
+    if (!error) {
+      for (var i = 0; i < tweets.length; i++) {
+        console.log(tweets[i].created_at);
+        console.log("");
+        console.log(tweets[i].text);
+      }
+    }
+  });
+};
 
 
-//     * `movie-this`
-// 3. `node liri.js movie-this '<movie name here>'`
+//spotify-this-song code
 
-//    * This will output the following information to your terminal/bash window:
+var getArtists = function(artist) {
+  return artist.name;
+};
 
-//      ```
-//        * Title of the movie.
-//        * Year the movie came out.
-//        * IMDB Rating of the movie.
-//        * Rotten Tomatoes Rating of the movie.
-//        * Country where the movie was produced.
-//        * Language of the movie.
-//        * Plot of the movie.
-//        * Actors in the movie.
-//      ```
+// Function for running a Spotify search
+var getSongs = function(songName) {
+  if (songName === undefined) {
+    songName = "The Sign, Ace of Base";
+  }
 
-//    * If the user doesn't type a movie in, the program will output data for the movie 'Mr. Nobody.'
+  spotify.search(
+    {
+      type: "track",
+      query: songName
+    },
+    function(err, data) {
+      if (err) {
+        console.log("Error occurred: " + err);
+        return;
+      }
+
+      var songs = data.tracks.items;
+
+      for (var i = 0; i < 5; i++) {
+        console.log(i);
+        console.log("artist(s): " + songs[i].artists.map(getArtists) +
+        "\nsong name: " + songs[i].name + "\n" +
+        "\npreview song: " + songs[i].preview_url +
+        "\nalbum: " + songs[i].album.name);
+        console.log("----------");
+      }
+    }
+  );
+};
 
 
+//movie-this code
+
+var getFilms = function(filmTitle) {
+  if (filmTitle === undefined) {
+    filmTitle = "Mr Nobody";
+  }
+
+  var apiInput = "http://www.omdbapi.com/?t=" + filmTitle + "&y=&plot=full&tomatoes=true&apikey=72656411";
+
+  request(apiInput, function(error, callback, body) {
+    if (!error && callback.statusCode === 200) {
+      var jsonData = JSON.parse(body);
+
+      console.log("Title: " + jsonData.Title + "\n" +
+      "\nYear Released: " + jsonData.Year + "\n" +
+      "\nIMDB Rating: " + jsonData.imdbRating + "\n" +
+      "\nRotten Tomatoes Rating: " + jsonData.Ratings[1].Value + "\n" +
+      "\nCountry: " + jsonData.Country + "\n" +
+      "\nLanguage: " + jsonData.Language + "\n" +
+      "\nPlot: " + "\n" + jsonData.Plot + "\n" +
+      "\nActors: " + jsonData.Actors);
+    }
+  });
+};
 
 
-//     * `do-what-it-says`
-// 4. `node liri.js do-what-it-says`
-   
-//    * Using the `fs` Node package, LIRI will take the text inside of random.txt and then use it to call one of LIRI's commands.
-     
-//      * It should run `spotify-this-song` for "I Want it That Way," as follows the text in `random.txt`.
-     
-//      * Feel free to change the text in that document to test out the feature for other commands.
+//"do-what-it-says"
 
+var readRandom = function() {
+  fs.readFile("random.txt", "utf8", function(error, data) {
+    console.log(data);
+
+    var dataArr = data.split(",");
+
+    if (dataArr.length === 2) {
+      userCommand(dataArr[0], dataArr[1]);
+    }
+    else if (dataArr.length === 1) {
+      userCommand(dataArr[0]);
+    }
+  });
+};
+
+
+var userCommand = function(caseData, functionData) {
+  switch (caseData) {
+  case "my-tweets":
+    getTweets();
+    break;
+  case "spotify-this-song":
+    getSongs(functionData);
+    break;
+  case "movie-this":
+    getFilms(functionData);
+    break;
+  case "do-what-it-says":
+    readRandom();
+    break;
+  default:
+    console.log("Whatchu talkin' 'bout, Willis?!");
+  }
+};
+
+// Function which takes in command line arguments and executes correct function accordingly
+var runUserCommand = function(arg1, arg2) {
+  userCommand(arg1, arg2);
+};
+
+// MAIN PROCESS
+// =====================================
+runUserCommand(process.argv[2], process.argv[3]);
